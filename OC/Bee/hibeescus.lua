@@ -7,9 +7,9 @@ local redstone = component.redstone
 
 -- Configuration
 local chestSide = sides.down        -- Chest is below transposer
-local dropperSide = sides.west      -- Dropper is west of transposer
-local dropperControlSide = sides.west -- Redstone to dropper (west of computer)
-local accelSide = sides.west        -- Redstone to world accelerator (west of computer)
+local dropperSide = sides.left      -- Dropper is west of transposer
+local dropperControlSide = sides.down -- Redstone to dropper (west of computer)
+local accelSide = sides.left        -- Redstone to world accelerator (west of computer)
 
 -- Check if chest has at least one item
 local function chestHasItem()
