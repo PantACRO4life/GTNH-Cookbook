@@ -8,16 +8,15 @@ local redstone = component.redstone
 -- Configuration
 local chestSide = sides.down        -- Chest is below transposer
 local dropperSide = sides.west      -- Dropper is west of transposer
-local transposerSide = sides.north  -- Transposer is north of computer
-local dropperControlSide = sides.west -- Redstone to dropper (west of computer)
-local accelSide = sides.west        -- Accelerator is also west of computer
+local dropperControlSide = sides.west -- Redstone output to dropper (west of computer)
+local accelSide = sides.west        -- Redstone output to world accelerator (west of computer)
 
--- Utility: find slot with ignoble princess
-local function findIgnoblePrincess()
+-- Utility: find any princess
+local function findPrincess()
   local inv = transposer.getAllStacks(chestSide)
   for i = 1, #inv do
     local stack = inv[i]
-    if stack and stack.label and stack.label:find("Princess") and stack.label:find("Ignoble") then
+    if stack and stack.label and stack.label:find("Princess") then
       return i
     end
   end
@@ -26,9 +25,9 @@ end
 
 -- Main loop
 while true do
-  local slot = findIgnoblePrincess()
+  local slot = findPrincess()
   if slot then
-    print("Found Ignoble Princess in chest slot: " .. slot)
+    print("Found Princess in chest slot: " .. slot)
 
     -- Move it into the dropper
     local moved = transposer.transferItem(chestSide, dropperSide, 1, slot)
@@ -52,7 +51,7 @@ while true do
       print("Accelerator OFF")
     end
   else
-    print("No ignoble princess in chest.")
+    print("No princess found in chest.")
   end
 
   os.sleep(5)
