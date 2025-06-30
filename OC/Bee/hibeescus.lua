@@ -3,13 +3,15 @@ local sides = require("sides")
 local os = require("os")
 
 local transposer = component.transposer
-local redstone = component.redstone
+-- Use two separate redstone devices
+local redstoneDropper = component.proxy("3df2adb6-4298-4c02-9686-f935cdc48289")
+local redstoneAccelerator = component.proxy("6dc0088e-85e3-4d91-ae67-e62de5549f0e")
 
 -- Configuration
 local chestSide = sides.down        -- Chest is below transposer
 local dropperSide = sides.west      -- Dropper is west of transposer
-local dropperControlSide = sides.down -- Redstone to dropper (west of computer)
-local accelSide = sides.west        -- Redstone to world accelerator (west of computer)
+local dropperControlSide = sides.down -- Dropper is down from its redstone interface
+local accelSide = sides.west        -- World accelerator is west of its redstone interface
 
 -- Check if chest has at least one item
 local function chestHasItem()
@@ -33,21 +35,23 @@ while true do
     if moved and moved > 0 then
       print("Moved to dropper.")
 
-      redstone.setOutput(dropperControlSide, 15)
+      -- Pulse the dropper using its own redstone card
+      redstoneDropper.setOutput(dropperControlSide, 15)
       os.sleep(0.3)
-      redstone.setOutput(dropperControlSide, 0)
-      print("Dropped.")
+      redstoneDropper.setOutput(dropperControlSide, 0)
+      print("Dropper triggered.")
 
-      redstone.setOutput(accelSide, 15)
+      -- Turn on accelerator using its own redstone card
+      redstoneAccelerator.setOutput(accelSide, 15)
       print("Accelerator ON")
 
-      os.sleep(30)
+      os.sleep(30) -- run the flower for full conversion time
 
-      redstone.setOutput(accelSide, 0)
+      redstoneAccelerator.setOutput(accelSide, 0)
       print("Accelerator OFF")
     end
   else
-    print("Chest is empty, waiting...")
+    print("Chest is empty. Waiting...")
   end
 
   os.sleep(5)
