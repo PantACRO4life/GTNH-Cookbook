@@ -1,15 +1,33 @@
 local component = require("component")
 local sides = require("sides")
 local os = require("os")
+local event = require("event")
 
 local transposer = component.transposer
 local redstone = component.redstone
+local computer = component.computer
 
--- Configuration
+-- Redstone + transposer config
 local chestSide = sides.down           -- Chest is below transposer
 local dropperSide = sides.west         -- Dropper is west of transposer
 local dropperControlSide = sides.down  -- Redstone to dropper (down of computer)
 local accelSide = sides.west           -- Redstone to world accelerator (west of computer)
+
+-- Exit flag
+local shouldExit = false
+
+-- Keyboard event to quit on 'q'
+local function onKeyUp(_, _, char, _, _)
+  if char == 113 then -- 'q'
+    shouldExit = true
+    computer.beep(1000, 1)
+    print("===== Q PRESSED: EXITING =====")
+    return false -- auto-unregisters this listener
+  end
+end
+
+-- Register event listener
+event.listen("key_up", onKeyUp)
 
 -- Check if chest has at least one item
 local function chestHasItem()
@@ -24,7 +42,7 @@ local function chestHasItem()
 end
 
 -- Main loop
-while true do
+while not shouldExit do
   local slot = chestHasItem()
   if slot then
     print("Bee found in chest slot " .. slot .. ", starting conversion.")
@@ -47,5 +65,10 @@ while true do
   else
     print("Chest is empty, waiting...")
   end
+
   os.sleep(0.5)
 end
+
+-- Cleanup
+event.ignore("key_up", onKeyUp)
+print("Exited safely.")
