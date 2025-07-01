@@ -107,9 +107,8 @@ while true do
 
     -- Step 2: Use tool 3 times
     for i = 1, toolUseCount do
-        if robot.useDown() then
-            print("🪄 Tool use (" .. i .. ")")
-        end
+        robot.useDown()
+        print("🪄 Tool use (" .. i .. ")")
         os.sleep(toolUseDelay)
     end
 
