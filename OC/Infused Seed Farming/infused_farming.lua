@@ -134,8 +134,24 @@ while true do
 
     local seedSlot = findSeedSlot()
     if not seedSlot then
-        print("❌ No Infused Seeds found. Waiting...")
-        os.sleep(2)
+        print("❌ No Infused Seeds found. Attempting recovery...")
+
+        -- Try to mature and harvest an already-planted seed
+        for i = 1, toolUseCount do
+            robot.useDown()
+            print("🪄 Tool use (" .. i .. ")")
+            os.sleep(toolUseDelay)
+        end
+
+        if robot.swingDown() then
+            print("🌾 Plant harvested (from fallback).")
+        else
+            print("❌ No plant to harvest.")
+            os.sleep(2)
+        end
+
+        dumpItems()
+        os.sleep(0.5)
         goto continue
     end
 
