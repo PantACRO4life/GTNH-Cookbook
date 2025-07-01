@@ -2,8 +2,8 @@ local robot = require("robot")
 local os = require("os")
 
 -- Slot config
-local toolSlot = 2
-local seedSlot = 3 -- reused seed lands here after breaking
+local toolInventorySlot = 2 -- Tool stored in this slot
+local seedSlot = 3          -- Reused seed lands here after breaking
 
 -- Timing
 local toolUseDelay = 0.3
@@ -20,16 +20,28 @@ while true do
         goto continue
     end
 
-    -- Step 2: Use tool 3 times to fully grow plant
-    robot.select(toolSlot)
+    os.sleep(0.2)
+
+    -- Step 2: Equip and use tool 3 times
+    robot.select(toolInventorySlot)
+    if robot.equip() then
+        print("🔧 Tool equipped.")
+    else
+        print("❌ Failed to equip tool.")
+        goto continue
+    end
+
     for i = 1, 3 do
         if robot.use() then
-            print("🔧 Used tool (" .. i .. ")")
+            print("🪄 Used tool (" .. i .. ")")
         else
             print("⚠️ Tool use failed (" .. i .. ")")
         end
         os.sleep(toolUseDelay)
     end
+
+    -- Optional: Unequip tool and return it to inventory
+    robot.equip()  -- Swaps it back to toolInventorySlot
 
     -- Step 3: Break fully grown plant
     os.sleep(harvestDelay)
