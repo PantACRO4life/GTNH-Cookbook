@@ -10,25 +10,26 @@ local toolName = "Hoe of Growth"
 local seedName = "Infused Seeds"
 local maxAllowedDamage = 1400
 local dropQty = 64
-local toolSlot = 2           -- Reserved inventory slot for the tool
+local toolSlot = 2
 local toolUseCount = 3
 local toolUseDelay = 0.3
+local chestFront = sides.front
+local chestTop = sides.top
 
--- Helper: equip tool from slot 2
+-- Equip tool from slot 2
 function equipTool()
     robot.select(toolSlot)
     return inv.equip()
 end
 
--- Helper: unequip tool to slot 2
+-- Unequip tool to slot 2
 function unequipTool()
     robot.select(toolSlot)
     return inv.equip()
 end
 
--- Ensure tool is equipped at startup
+-- Auto-equip tool at startup if present
 function ensureToolEquipped()
-    -- Try to equip from toolSlot only if something is there
     local item = inv.getStackInInternalSlot(toolSlot)
     if item and item.label == toolName then
         print("🧤 Equipping tool at startup...")
@@ -36,15 +37,45 @@ function ensureToolEquipped()
     end
 end
 
--- Check tool durability, returns true to continue, false to stop
+-- Waits for a repaired tool to arrive from the top chest
+function waitForReplacementTool()
+    print("🔁 Waiting for a repaired tool from chest above...")
+    while true do
+        for slot = 1, inv.getInventorySize(chestTop) or 0 do
+            local item = inv.getStackInSlot(chestTop, slot)
+            if item and item.label == toolName and item.damage < maxAllowedDamage then
+                robot.select(toolSlot)
+                if robot.suckUp() then
+                    print("✅ Repaired tool acquired.")
+                    equipTool()
+                    return
+                else
+                    print("❌ Failed to suck tool from top chest.")
+                end
+            end
+        end
+        os.sleep(2)
+    end
+end
+
+-- Checks durability and swaps tool if too damaged
 function checkToolDurability()
     unequipTool()
     local item = inv.getStackInInternalSlot(toolSlot)
     if item and item.label == toolName and item.damage and item.maxDamage then
         print("🛠 Tool durability: " .. item.damage .. "/" .. item.maxDamage)
         if item.damage >= maxAllowedDamage then
-            print("⚠️ Tool too damaged. Stopping.")
-            return false
+            print("⚠️ Tool too damaged. Exchanging...")
+            -- Drop it in the front chest
+            robot.select(toolSlot)
+            if robot.drop() then
+                print("📤 Dropped damaged tool into chest.")
+                waitForReplacementTool()
+                return true
+            else
+                print("❌ Failed to drop damaged tool.")
+                return false
+            end
         end
     else
         print("❌ Could not read tool durability.")
@@ -54,7 +85,7 @@ function checkToolDurability()
     return true
 end
 
--- Drop any item that isn't the seed or the tool
+-- Drop non-seed/non-tool items
 function dumpItems()
     for slot = 1, 16 do
         local item = inv.getStackInInternalSlot(slot)
@@ -69,7 +100,7 @@ function dumpItems()
     end
 end
 
--- Find the slot that has the seed
+-- Find seed slot
 function findSeedSlot()
     for slot = 1, 16 do
         local item = inv.getStackInInternalSlot(slot)
@@ -81,14 +112,14 @@ function findSeedSlot()
 end
 
 -- 🪴 Main Execution
-ensureToolEquipped() -- make sure tool is in hand before starting
+ensureToolEquipped()
 
 while true do
     if not checkToolDurability() then
-        break
+        os.sleep(5)
+        goto continue
     end
 
-    -- Step 1: Find and plant seed
     local seedSlot = findSeedSlot()
     if not seedSlot then
         print("❌ No Infused Seeds found. Waiting...")
@@ -105,14 +136,12 @@ while true do
         goto continue
     end
 
-    -- Step 2: Use tool 3 times
     for i = 1, toolUseCount do
         robot.useDown()
         print("🪄 Tool use (" .. i .. ")")
         os.sleep(toolUseDelay)
     end
 
-    -- Step 3: Harvest
     if robot.swingDown() then
         print("🌾 Plant harvested.")
     else
@@ -120,10 +149,7 @@ while true do
     end
 
     os.sleep(0.2)
-
-    -- Step 4: Drop all non-essential items
     dumpItems()
-
     os.sleep(0.5)
 
     ::continue::
