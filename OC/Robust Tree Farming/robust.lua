@@ -1,48 +1,44 @@
 local robot = require("robot")
 local os = require("os")
 
--- Indexes for seed and tool in inventory
-local seedSlot = 1
+-- Slot config
 local toolSlot = 2
+local seedSlot = 3 -- reused seed lands here after breaking
 
--- Time between tool uses (seconds)
-local useDelay = 0.5
--- Time to wait before breaking plant (if needed)
-local growTime = 1.0
+-- Timing
+local toolUseDelay = 0.3
+local harvestDelay = 0.5
 
 while true do
-    -- Step 1: Select seed and place it
+    -- Step 1: Plant seed from slot 3
     robot.select(seedSlot)
-    if robot.place() then
-        print("Seed planted.")
+    if robot.count(seedSlot) > 0 and robot.place() then
+        print("✅ Seed planted.")
     else
-        print("Failed to plant seed.")
+        print("❌ Failed to plant. No seed?")
         os.sleep(1)
         goto continue
     end
 
-    -- Step 2: Click with tool 3 times
+    -- Step 2: Use tool 3 times to fully grow plant
     robot.select(toolSlot)
     for i = 1, 3 do
         if robot.use() then
-            print("Used tool on plant (" .. i .. ")")
+            print("🔧 Used tool (" .. i .. ")")
         else
-            print("Tool use failed.")
+            print("⚠️ Tool use failed (" .. i .. ")")
         end
-        os.sleep(useDelay)
+        os.sleep(toolUseDelay)
     end
 
-    -- Optional wait before breaking the plant (in case it's not immediately harvestable)
-    os.sleep(growTime)
-
-    -- Step 3: Break plant
+    -- Step 3: Break fully grown plant
+    os.sleep(harvestDelay)
     if robot.swing() then
-        print("Plant harvested.")
+        print("🌾 Plant harvested.")
     else
-        print("Failed to break plant.")
+        print("❌ Failed to harvest.")
     end
 
-    -- Step 4: Wait or loop
     os.sleep(0.5)
 
     ::continue::
