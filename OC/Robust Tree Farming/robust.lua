@@ -14,19 +14,29 @@ local toolSlot = 2           -- Reserved inventory slot for the tool
 local toolUseCount = 3
 local toolUseDelay = 0.3
 
--- Helper: equip tool
+-- Helper: equip tool from slot 2
 function equipTool()
     robot.select(toolSlot)
     return inv.equip()
 end
 
--- Helper: unequip tool
+-- Helper: unequip tool to slot 2
 function unequipTool()
     robot.select(toolSlot)
     return inv.equip()
 end
 
--- Helper: check tool durability, return true if OK, false if too damaged
+-- Ensure tool is equipped at startup
+function ensureToolEquipped()
+    -- Try to equip from toolSlot only if something is there
+    local item = inv.getStackInInternalSlot(toolSlot)
+    if item and item.label == toolName then
+        print("🧤 Equipping tool at startup...")
+        equipTool()
+    end
+end
+
+-- Check tool durability, returns true to continue, false to stop
 function checkToolDurability()
     unequipTool()
     local item = inv.getStackInInternalSlot(toolSlot)
@@ -44,24 +54,22 @@ function checkToolDurability()
     return true
 end
 
--- Helper: drop unwanted items
+-- Drop any item that isn't the seed or the tool
 function dumpItems()
     for slot = 1, 16 do
         local item = inv.getStackInInternalSlot(slot)
-        if item then
-            if item.label ~= seedName and item.label ~= toolName then
-                robot.select(slot)
-                if robot.drop(chestSide) then
-                    print("📦 Dropped " .. item.label)
-                else
-                    print("❌ Failed to drop " .. item.label)
-                end
+        if item and item.label ~= seedName and item.label ~= toolName then
+            robot.select(slot)
+            if robot.drop(chestSide) then
+                print("📦 Dropped " .. item.label)
+            else
+                print("❌ Failed to drop " .. item.label)
             end
         end
     end
 end
 
--- Helper: find the seed slot
+-- Find the slot that has the seed
 function findSeedSlot()
     for slot = 1, 16 do
         local item = inv.getStackInInternalSlot(slot)
@@ -72,10 +80,12 @@ function findSeedSlot()
     return nil
 end
 
--- 🪴 Main Loop
+-- 🪴 Main Execution
+ensureToolEquipped() -- make sure tool is in hand before starting
+
 while true do
     if not checkToolDurability() then
-        break -- stop program
+        break
     end
 
     -- Step 1: Find and plant seed
@@ -95,7 +105,7 @@ while true do
         goto continue
     end
 
-    -- Step 2: Use the tool 3 times
+    -- Step 2: Use tool 3 times
     for i = 1, toolUseCount do
         if robot.useDown() then
             print("🪄 Tool use (" .. i .. ")")
@@ -112,7 +122,7 @@ while true do
 
     os.sleep(0.2)
 
-    -- Step 4: Drop all other items
+    -- Step 4: Drop all non-essential items
     dumpItems()
 
     os.sleep(0.5)
