@@ -13,8 +13,6 @@ local dropQty = 64
 local toolSlot = 2
 local toolUseCount = 3
 local toolUseDelay = 0.3
-local chestFront = sides.front
-local chestTop = sides.top
 
 -- Equip tool from slot 2
 function equipTool()
@@ -37,28 +35,31 @@ function ensureToolEquipped()
     end
 end
 
--- Waits for a repaired tool to arrive from the top chest
+-- Waits until a repaired tool is pulled with robot.suckUp()
 function waitForReplacementTool()
     print("🔁 Waiting for a repaired tool from chest above...")
     while true do
-        for slot = 1, inv.getInventorySize(chestTop) or 0 do
-            local item = inv.getStackInSlot(chestTop, slot)
-            if item and item.label == toolName and item.damage < maxAllowedDamage then
-                robot.select(toolSlot)
-                if robot.suckUp() then
-                    print("✅ Repaired tool acquired.")
-                    equipTool()
-                    return
-                else
-                    print("❌ Failed to suck tool from top chest.")
-                end
+        robot.select(toolSlot)
+        local sucked = robot.suckUp()
+
+        if sucked then
+            local item = inv.getStackInInternalSlot(toolSlot)
+            if item and item.label == toolName and item.damage and item.damage < maxAllowedDamage then
+                print("✅ Repaired tool acquired.")
+                inv.equip()
+                return
+            else
+                -- Not the right tool or too damaged — drop it back
+                print("❌ Invalid or damaged tool. Dropping it back.")
+                robot.drop()
             end
         end
-        os.sleep(2)
+
+        os.sleep(0.5)
     end
 end
 
--- Checks durability and swaps tool if too damaged
+-- Check tool durability, and swap when needed
 function checkToolDurability()
     unequipTool()
     local item = inv.getStackInInternalSlot(toolSlot)
@@ -66,7 +67,6 @@ function checkToolDurability()
         print("🛠 Tool durability: " .. item.damage .. "/" .. item.maxDamage)
         if item.damage >= maxAllowedDamage then
             print("⚠️ Tool too damaged. Exchanging...")
-            -- Drop it in the front chest
             robot.select(toolSlot)
             if robot.drop() then
                 print("📤 Dropped damaged tool into chest.")
@@ -84,6 +84,7 @@ function checkToolDurability()
     equipTool()
     return true
 end
+
 
 -- Drop non-seed/non-tool items
 function dumpItems()
