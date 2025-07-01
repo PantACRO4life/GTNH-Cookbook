@@ -9,37 +9,42 @@ local inv = component.inventory_controller
 local toolName = "Hoe of Growth"
 local seedName = "Infused Seeds"
 local maxAllowedDamage = 1400
-local chestSide = sides.front -- Chest is in front of robot
+local chestSide = sides.front
+local toolSlot = 2           -- Reserved inventory slot for the tool
 local toolUseCount = 3
 local toolUseDelay = 0.3
 
--- Helper: check if slot contains the tool
-function isTool(slot)
-    local item = inv.getStackInInternalSlot(slot)
-    return item and item.label == toolName
+-- Helper: equip tool
+function equipTool()
+    robot.select(toolSlot)
+    return inv.equip()
 end
 
--- Helper: check if slot contains the seed
-function isSeed(slot)
-    local item = inv.getStackInInternalSlot(slot)
-    return item and item.label == seedName
+-- Helper: unequip tool
+function unequipTool()
+    robot.select(toolSlot)
+    return inv.equip()
 end
 
--- Helper: check tool durability and stop if it's low
+-- Helper: check tool durability, return true if OK, false if too damaged
 function checkToolDurability()
-    for slot = 1, 16 do
-        local item = inv.getStackInInternalSlot(slot)
-        if item and item.label == toolName and item.damage and item.maxDamage then
-            print("🛠 Tool durability: " .. item.damage .. "/" .. item.maxDamage)
-            if item.damage >= maxAllowedDamage then
-                print("⚠️ Tool is too damaged. Stopping program.")
-                os.exit()
-            end
+    unequipTool()
+    local item = inv.getStackInInternalSlot(toolSlot)
+    if item and item.label == toolName and item.damage and item.maxDamage then
+        print("🛠 Tool durability: " .. item.damage .. "/" .. item.maxDamage)
+        if item.damage >= maxAllowedDamage then
+            print("⚠️ Tool too damaged. Stopping.")
+            return false
         end
+    else
+        print("❌ Could not read tool durability.")
+        return false
     end
+    equipTool()
+    return true
 end
 
--- Helper: drop non-seed, non-tool items into chest
+-- Helper: drop unwanted items
 function dumpItems()
     for slot = 1, 16 do
         local item = inv.getStackInInternalSlot(slot)
@@ -56,19 +61,22 @@ function dumpItems()
     end
 end
 
--- Helper: find seed slot
+-- Helper: find the seed slot
 function findSeedSlot()
     for slot = 1, 16 do
-        if isSeed(slot) then
+        local item = inv.getStackInInternalSlot(slot)
+        if item and item.label == seedName then
             return slot
         end
     end
     return nil
 end
 
--- Main loop
+-- 🪴 Main Loop
 while true do
-    checkToolDurability()
+    if not checkToolDurability() then
+        break -- stop program
+    end
 
     -- Step 1: Find and plant seed
     local seedSlot = findSeedSlot()
@@ -87,26 +95,24 @@ while true do
         goto continue
     end
 
-    -- Step 2: Use the tool 3 times to grow
+    -- Step 2: Use the tool 3 times
     for i = 1, toolUseCount do
         if robot.useDown() then
-            print("🪄 Used tool on plant (" .. i .. ")")
-        else
-            print("⚠️ Tool use failed (" .. i .. ")")
+            print("🪄 Tool use (" .. i .. ")")
         end
         os.sleep(toolUseDelay)
     end
 
-    -- Step 3: Harvest plant (tool must be equipped manually)
+    -- Step 3: Harvest
     if robot.swingDown() then
         print("🌾 Plant harvested.")
     else
-        print("❌ Failed to harvest plant.")
+        print("❌ Failed to harvest.")
     end
 
     os.sleep(0.2)
 
-    -- Step 4: Dump other items to chest
+    -- Step 4: Drop all other items
     dumpItems()
 
     os.sleep(0.5)
