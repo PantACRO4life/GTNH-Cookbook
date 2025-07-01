@@ -50,9 +50,9 @@ function waitForReplacementTool()
 
     while true do
         robot.select(toolSlot)
-        local sucked = robot.suckUp()
         os.sleep(waitSeconds)
-        
+        local sucked = robot.suckUp()
+
         if sucked then
             local item = inv.getStackInInternalSlot(toolSlot)
             if item and item.label == toolName and item.damage and item.damage < maxAllowedDamage then
