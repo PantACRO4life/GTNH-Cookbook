@@ -1,65 +1,113 @@
 local robot = require("robot")
 local component = require("component")
+local sides = require("sides")
 local os = require("os")
 
 local inv = component.inventory_controller
 
--- Slot config
-local toolSlot = 2      -- Tool (e.g., watering can)
-local seedSlot = 3      -- Seed ends up here after harvesting
-
--- Timing config
+-- Configuration
+local toolName = "Hoe of Growth"
+local seedName = "Infused Seeds"
+local maxAllowedDamage = 1400
+local chestSide = sides.front -- Chest is in front of robot
+local toolUseCount = 3
 local toolUseDelay = 0.3
-local harvestDelay = 0.5
 
+-- Helper: check if slot contains the tool
+function isTool(slot)
+    local item = inv.getStackInInternalSlot(slot)
+    return item and item.label == toolName
+end
+
+-- Helper: check if slot contains the seed
+function isSeed(slot)
+    local item = inv.getStackInInternalSlot(slot)
+    return item and item.label == seedName
+end
+
+-- Helper: check tool durability and stop if it's low
+function checkToolDurability()
+    for slot = 1, 16 do
+        local item = inv.getStackInInternalSlot(slot)
+        if item and item.label == toolName and item.damage and item.maxDamage then
+            print("🛠 Tool durability: " .. item.damage .. "/" .. item.maxDamage)
+            if item.damage >= maxAllowedDamage then
+                print("⚠️ Tool is too damaged. Stopping program.")
+                os.exit()
+            end
+        end
+    end
+end
+
+-- Helper: drop non-seed, non-tool items into chest
+function dumpItems()
+    for slot = 1, 16 do
+        local item = inv.getStackInInternalSlot(slot)
+        if item then
+            if item.label ~= seedName and item.label ~= toolName then
+                robot.select(slot)
+                if robot.drop(chestSide) then
+                    print("📦 Dropped " .. item.label)
+                else
+                    print("❌ Failed to drop " .. item.label)
+                end
+            end
+        end
+    end
+end
+
+-- Helper: find seed slot
+function findSeedSlot()
+    for slot = 1, 16 do
+        if isSeed(slot) then
+            return slot
+        end
+    end
+    return nil
+end
+
+-- Main loop
 while true do
-    -- Step 1: Equip tool from slot 2
-    robot.select(toolSlot)
-    if inv.equip() then
-        print("🛠️ Tool equipped.")
-    else
-        print("❌ Failed to equip tool.")
+    checkToolDurability()
+
+    -- Step 1: Find and plant seed
+    local seedSlot = findSeedSlot()
+    if not seedSlot then
+        print("❌ No Infused Seeds found. Waiting...")
+        os.sleep(2)
         goto continue
     end
 
-    -- Step 2: Plant from slot 3
     robot.select(seedSlot)
-    if robot.count(seedSlot) > 0 and robot.place() then
-        print("✅ Seed planted.")
+    if robot.placeDown() then
+        print("🌱 Seed planted.")
     else
-        print("❌ No seed to plant.")
+        print("❌ Failed to plant seed.")
         os.sleep(1)
         goto continue
     end
 
-    os.sleep(0.2)
-
-    -- Step 3: Use tool 3 times
-    for i = 1, 3 do
-        if robot.use() then
-            print("🪄 Tool use (" .. i .. ")")
+    -- Step 2: Use the tool 3 times to grow
+    for i = 1, toolUseCount do
+        if robot.useDown() then
+            print("🪄 Used tool on plant (" .. i .. ")")
         else
-            print("⚠️ Tool use failed.")
+            print("⚠️ Tool use failed (" .. i .. ")")
         end
         os.sleep(toolUseDelay)
     end
 
-    -- Step 4: Unequip tool back to slot 2
-    robot.select(toolSlot)
-    if inv.equip() then
-        print("🧤 Tool unequipped.")
-    else
-        print("❌ Failed to unequip tool.")
-        goto continue
-    end
-
-    -- Step 5: Harvest plant (bare-handed)
-    os.sleep(harvestDelay)
-    if robot.swing() then
+    -- Step 3: Harvest plant (tool must be equipped manually)
+    if robot.swingDown() then
         print("🌾 Plant harvested.")
     else
         print("❌ Failed to harvest plant.")
     end
+
+    os.sleep(0.2)
+
+    -- Step 4: Dump other items to chest
+    dumpItems()
 
     os.sleep(0.5)
 
