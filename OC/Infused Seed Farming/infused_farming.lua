@@ -4,6 +4,7 @@ local sides = require("sides")
 local os = require("os")
 
 local inv = component.inventory_controller
+local redstone = component.redstone
 
 -- Configuration
 local toolName = "Hoe of Growth"
@@ -13,6 +14,9 @@ local dropQty = 64
 local toolSlot = 2
 local toolUseCount = 3
 local toolUseDelay = 0.3
+local waitSeconds = 45         -- Seconds to wait before rechecking chest above
+local freq = 2010             -- Wireless redstone frequency
+
 
 -- Equip tool from slot 2
 function equipTool()
@@ -38,6 +42,12 @@ end
 -- Waits until a repaired tool is pulled with robot.suckUp()
 function waitForReplacementTool()
     print("🔁 Waiting for a repaired tool from chest above...")
+
+    -- Activate redstone to notify system/tool dispenser
+    redstone.setWirelessFrequency(freq)
+    redstone.setWirelessOutput(true)
+    print("📡 Redstone signal ON (freq " .. freq .. ")")
+
     while true do
         robot.select(toolSlot)
         local sucked = robot.suckUp()
@@ -46,18 +56,20 @@ function waitForReplacementTool()
             local item = inv.getStackInInternalSlot(toolSlot)
             if item and item.label == toolName and item.damage and item.damage < maxAllowedDamage then
                 print("✅ Repaired tool acquired.")
+                redstone.setWirelessOutput(false)
+                print("📡 Redstone signal OFF")
                 inv.equip()
                 return
             else
-                -- Not the right tool or too damaged — drop it back
-                print("❌ Invalid or damaged tool. Dropping it back.")
-                robot.drop()
+                print("❌ Invalid or damaged tool received. Returning it.")
+                robot.dropUp()
             end
         end
 
-        os.sleep(0.5)
+        os.sleep(waitSeconds)
     end
 end
+
 
 -- Check tool durability, and swap when needed
 function checkToolDurability()
@@ -68,7 +80,7 @@ function checkToolDurability()
         if item.damage >= maxAllowedDamage then
             print("⚠️ Tool too damaged. Exchanging...")
             robot.select(toolSlot)
-            if robot.drop() then
+            if robot.dropUp() then
                 print("📤 Dropped damaged tool into chest.")
                 waitForReplacementTool()
                 return true
