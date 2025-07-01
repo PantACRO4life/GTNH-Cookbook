@@ -10,6 +10,7 @@ local toolName = "Hoe of Growth"
 local seedName = "Infused Seeds"
 local maxAllowedDamage = 1400
 local chestSide = sides.front
+local dropQty = 64
 local toolSlot = 2           -- Reserved inventory slot for the tool
 local toolUseCount = 3
 local toolUseDelay = 0.3
@@ -60,7 +61,7 @@ function dumpItems()
         local item = inv.getStackInInternalSlot(slot)
         if item and item.label ~= seedName and item.label ~= toolName then
             robot.select(slot)
-            if robot.drop(chestSide) then
+            if robot.drop(chestSide, dropQty) then
                 print("📦 Dropped " .. item.label)
             else
                 print("❌ Failed to drop " .. item.label)
